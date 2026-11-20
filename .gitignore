@@ -1,0 +1,17 @@
+.env.*
+!config/.env.example
+config/.env
+config/finance-backup.conf
+
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+finance.db*
+investments.json
+fixed_income.json
