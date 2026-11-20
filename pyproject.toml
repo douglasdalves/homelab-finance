@@ -1,0 +1,24 @@
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pylint.main]
+py-version = "3.10"
+source-roots = ["src"]
+init-hook = "import sys; sys.path.insert(0, 'src')"
+
+[tool.pylint.messages_control]
+disable = [
+  "missing-class-docstring",
+  "missing-function-docstring",
+  "too-many-boolean-expressions",
+  "too-many-branches",
+  "too-many-lines",
+  "too-many-locals",
+  "too-many-return-statements",
+  "too-many-statements",
+  "invalid-name",
+]
