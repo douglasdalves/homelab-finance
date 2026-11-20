@@ -30,13 +30,14 @@ No PowerShell, na raiz do repositório:
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt -r requirements-dev.txt
-Copy-Item config\.env.example config\.env
+$env:FINANCE_DB_PATH = (Join-Path $PWD 'finance.db')
 python finance_app_server.py
 ```
 
-O servidor lê `config/.env` ao iniciar. Variáveis já definidas no ambiente do
-processo têm precedência. Sem `FINANCE_DB_PATH`, o banco é criado como
-`finance.db` na raiz do repositório. A API escuta na porta `8001`.
+O servidor usa somente variáveis de ambiente do processo; ele não lê arquivos
+`.env` diretamente e não depende de `python-dotenv`. Se `FINANCE_DB_PATH` não
+estiver definido, o banco é criado como `finance.db` na raiz do repositório. A API
+escuta na porta `8001`.
 
 ## Implantação com Nginx
 
@@ -45,7 +46,8 @@ para o serviço `finance-api:8001`. Em Compose ou outro orquestrador:
 
 1. Monte `web/` como `/usr/share/nginx/html` no contêiner Nginx.
 2. Monte o código e os dados no contêiner da API, não na raiz web.
-3. Passe `config/.env` somente ao serviço da API.
+3. Configure `env_file: ./config/.env` somente no serviço da API, ou injete as
+   variáveis pelo ambiente do orquestrador.
 4. Configure `FINANCE_DB_PATH` para o caminho dentro do volume persistente.
 5. Não publique diretamente a porta `8001`; restrinja o acesso à rede interna.
 

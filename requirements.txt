@@ -1,1 +1,1 @@
-python-dotenv>=1.0
+# No third-party runtime dependencies. The container should inject environment variables.

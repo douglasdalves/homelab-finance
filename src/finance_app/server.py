@@ -14,11 +14,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlparse
 
-from dotenv import load_dotenv
-
 ROOT = Path(__file__).resolve().parents[2]
 WEB_ROOT = ROOT / "web"
-load_dotenv(ROOT / "config" / ".env")
 DATABASE_FILE = Path(os.environ.get("FINANCE_DB_PATH", str(ROOT / "finance.db")))
 INVESTMENTS_FILE = ROOT / "investments.json"
 FIXED_INCOME_FILE = ROOT / "fixed_income.json"
