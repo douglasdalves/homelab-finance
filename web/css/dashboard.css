@@ -133,6 +133,7 @@ body.housing-mode .header-actions > .period{display:none;}
   gap:20px;
 }
 .housing-controls{display:flex;align-items:center;gap:10px;}
+.housing-detail-controls{display:flex;justify-content:flex-end;margin-bottom:12px;}
 .housing-import{position:relative;overflow:hidden;white-space:nowrap;}
 .housing-import input{
   position:absolute;
