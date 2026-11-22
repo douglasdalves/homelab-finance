@@ -198,9 +198,18 @@
         </div>
       </div>
       <section>
-        <h2>Detalhamento das contas</h2>
-        <div class="chart-box" style="overflow-x:auto;">
-          <table id="housingDetailsTable"></table>
+        <h2>Despesas por conta</h2>
+        <div class="grid-2">
+          <div>
+            <h2>Apartamento</h2>
+            <p class="deck">Despesas mensais do apartamento no ano selecionado.</p>
+            <div class="chart-box"><div id="housingApartmentChart"></div></div>
+          </div>
+          <div>
+            <h2>Luz</h2>
+            <p class="deck">Despesas mensais de energia elétrica no ano selecionado.</p>
+            <div class="chart-box"><div id="housingElectricityChart"></div></div>
+          </div>
         </div>
       </section>
     </section>
@@ -714,7 +723,7 @@ if (!IS_DEMO_MODE) {
 }
 
 function renderDashboard() {
-  ['fluxoChart', 'extrasChart', 'investChart', 'categoriaChart', 'carteiraChart', 'saldoChart', 'annualFixedChart', 'annualExtrasChart', 'annualInvestChart', 'housingMonthlyChart', 'housingAnnualChart'].forEach((id) => {
+  ['fluxoChart', 'extrasChart', 'investChart', 'categoriaChart', 'carteiraChart', 'saldoChart', 'annualFixedChart', 'annualExtrasChart', 'annualInvestChart', 'housingMonthlyChart', 'housingAnnualChart', 'housingApartmentChart', 'housingElectricityChart'].forEach((id) => {
     document.getElementById(id).replaceChildren();
   });
 
@@ -1170,7 +1179,6 @@ function renderDashboard() {
     const yearFilter = document.getElementById('housingYearFilter');
     const yearTitle = document.getElementById('housingYearTitle');
     const kpiRow = document.getElementById('housingKpiRow');
-    const detailsTable = document.getElementById('housingDetailsTable');
     const years = [...new Set(housingData.map((record) => Number(record.year)))]
       .filter((year) => Number.isInteger(year))
       .sort((first, second) => first - second);
@@ -1186,16 +1194,8 @@ function renderDashboard() {
       kpiRow.replaceChildren();
       housingChart(document.getElementById('housingMonthlyChart'), [], [], 'line');
       housingChart(document.getElementById('housingAnnualChart'), [], [], 'bar');
-      const emptyRow = document.createElement('tr');
-      const emptyCell = document.createElement('td');
-      emptyCell.colSpan = 3;
-      emptyCell.textContent = housingLoading
-        ? 'Carregando dados...'
-        : 'Importe a planilha de contas de moradia para começar.';
-      emptyRow.appendChild(emptyCell);
-      const emptyBody = document.createElement('tbody');
-      emptyBody.appendChild(emptyRow);
-      detailsTable.replaceChildren(emptyBody);
+      housingChart(document.getElementById('housingApartmentChart'), [], [], 'line');
+      housingChart(document.getElementById('housingElectricityChart'), [], [], 'line');
       return;
     }
 
@@ -1264,37 +1264,29 @@ function renderDashboard() {
       'bar',
     );
 
-    const header = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    ['Mês', 'Conta', 'Valor'].forEach((label, index) => {
-      const cell = document.createElement('th');
-      cell.textContent = label;
-      if (index === 2) {
-        cell.className = 'num';
-      }
-      headerRow.appendChild(cell);
+    const housingRecordsForYear = housingData
+      .filter((record) => Number(record.year) === selectedHousingYear);
+    const monthlyTotalsForItem = (isElectricity) => {
+      const totals = new Map();
+      housingRecordsForYear
+        .filter((record) => /luz|energia elétrica/i.test(String(record.item)) === isElectricity)
+        .forEach((record) => {
+          const month = Number(record.month);
+          totals.set(month, (totals.get(month) || 0) + Number(record.amount));
+        });
+      return [...totals.entries()].sort((first, second) => first[0] - second[0]);
+    };
+    [
+      ['housingApartmentChart', monthlyTotalsForItem(false)],
+      ['housingElectricityChart', monthlyTotalsForItem(true)],
+    ].forEach(([chartId, rows]) => {
+      housingChart(
+        document.getElementById(chartId),
+        rows.map(([month]) => MONTH_NAMES[month - 1]),
+        rows.map(([, amount]) => amount),
+        'line',
+      );
     });
-    header.appendChild(headerRow);
-    const body = document.createElement('tbody');
-    const details = housingData
-      .filter((record) => Number(record.year) === selectedHousingYear)
-      .sort((first, second) => (
-        Number(first.month) - Number(second.month)
-        || String(first.item).localeCompare(String(second.item), 'pt-BR')
-      ));
-    details.forEach((record) => {
-      const row = document.createElement('tr');
-      const monthCell = document.createElement('td');
-      monthCell.textContent = `${MONTH_NAMES[Number(record.month) - 1]}/${selectedHousingYear}`;
-      const itemCell = document.createElement('td');
-      itemCell.textContent = record.item;
-      const amountCell = document.createElement('td');
-      amountCell.className = 'num';
-      amountCell.textContent = brl(Number(record.amount));
-      row.append(monthCell, itemCell, amountCell);
-      body.appendChild(row);
-    });
-    detailsTable.replaceChildren(header, body);
   }
 
   const sourceMonths = Array.isArray(data.months) ? data.months : [];
