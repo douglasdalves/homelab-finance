@@ -173,13 +173,13 @@
       <div class="housing-heading">
         <div>
           <h2>Contas de moradia · <span id="housingYearTitle"></span></h2>
-          <p class="deck">Histórico separado do fluxo financeiro. Importe a planilha de contas de luz para começar.</p>
+          <p class="deck">Histórico separado do fluxo financeiro. Importe a planilha de luz ou moradia para começar.</p>
         </div>
         <div class="housing-controls">
           <label class="year-filter" for="housingYearFilter">Ano
             <select id="housingYearFilter" aria-label="Selecionar ano de moradia"></select>
           </label>
-          <label class="action-link housing-import">Importar contas de luz
+          <label class="action-link housing-import">Importar contas de moradia
             <input id="housingFile" type="file" accept=".xlsx,.xls">
           </label>
         </div>
@@ -479,6 +479,96 @@ function parseElectricityWorkbook(rows) {
   return records;
 }
 
+function parseApartmentWorkbook(rows) {
+  if (!Array.isArray(rows) || !Array.isArray(rows[0])) {
+    throw new Error('A planilha não contém uma tabela válida.');
+  }
+
+  const monthNumbers = new Map(HOUSING_MONTHS.map((month, index) => [month, index + 1]));
+  const records = [];
+  for (let headerRowIndex = 0; headerRowIndex < rows.length; headerRowIndex += 1) {
+    const headerRow = rows[headerRowIndex];
+    for (let column = 0; column < headerRow.length; column += 1) {
+      const year = Number(headerRow[column]);
+      if (!Number.isInteger(year) || year < 1900 || year > 2100) {
+        continue;
+      }
+
+      const foundMonths = new Set();
+      for (let rowIndex = headerRowIndex + 1; rowIndex < rows.length; rowIndex += 1) {
+        const row = rows[rowIndex];
+        const monthName = String(row[column] || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim()
+          .toLowerCase();
+        const month = monthNumbers.get(monthName);
+        const rawAmount = row[column + 1];
+        if (
+          !month
+          || rawAmount === null
+          || rawAmount === undefined
+          || (typeof rawAmount === 'string' && !rawAmount.trim())
+        ) {
+          continue;
+        }
+        if (foundMonths.has(month)) {
+          break;
+        }
+        foundMonths.add(month);
+
+        let amount = rawAmount;
+        if (typeof amount === 'string') {
+          amount = amount.replace(/[R$\s\u00a0]/g, '');
+          if (amount.includes(',')) {
+            amount = amount.replace(/\./g, '').replace(',', '.');
+          }
+          amount = Number(amount);
+        }
+        if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0) {
+          throw new Error(`Valor inválido na planilha para ${monthName}/${year}.`);
+        }
+
+        const period = year * 100 + month;
+        let item = 'Aluguel';
+        if (period >= 202005 && period < 202605) {
+          item = 'Condomínio + aluguel';
+        } else if (period >= 202605) {
+          item = 'Condomínio + parcela do apartamento';
+        }
+        records.push({ year, month, item, amount });
+      }
+    }
+  }
+
+  if (!records.length) {
+    throw new Error('Nenhum valor mensal de moradia foi encontrado.');
+  }
+  return records;
+}
+
+function parseHousingWorkbook(workbook) {
+  const records = [];
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      raw: true,
+      defval: null,
+    });
+    const normalizedName = sheetName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    if (normalizedName.includes('ap') || normalizedName.includes('moradia') || normalizedName.includes('condominio')) {
+      records.push(...parseApartmentWorkbook(rows));
+    } else {
+      records.push(...parseElectricityWorkbook(rows));
+    }
+  }
+  return records;
+}
+
 async function fetchHousingRecords() {
   const response = await fetch('/api/housing', { cache: 'no-store' });
   const payload = await response.json();
@@ -531,13 +621,7 @@ document.getElementById('housingFile').addEventListener('change', async (event) 
     }
 
     const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, {
-      header: 1,
-      raw: true,
-      defval: null,
-    });
-    const records = parseElectricityWorkbook(rows);
+    const records = parseHousingWorkbook(workbook);
     const response = await fetch('/api/housing', {
       method: 'POST',
       cache: 'no-store',
@@ -1107,7 +1191,7 @@ function renderDashboard() {
       emptyCell.colSpan = 3;
       emptyCell.textContent = housingLoading
         ? 'Carregando dados...'
-        : 'Importe a planilha de contas de luz para começar.';
+        : 'Importe a planilha de contas de moradia para começar.';
       emptyRow.appendChild(emptyCell);
       const emptyBody = document.createElement('tbody');
       emptyBody.appendChild(emptyRow);

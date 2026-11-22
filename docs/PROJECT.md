@@ -60,6 +60,10 @@ fora do volume servido.
 O SQLite guarda lançamentos e registros de moradia. A tela de lançamentos grava
 pela API; o dashboard consulta os mesmos dados. A importação da planilha de
 moradia é processada no navegador e envia apenas os valores mensais extraídos.
+Abas identificadas como dados de apartamento, moradia ou condomínio recebem o
+rótulo histórico correspondente: aluguel até abril de 2020, condomínio mais
+aluguel de maio de 2020 até abril de 2026 e condomínio mais parcela do
+apartamento a partir de maio de 2026.
 
 A carteira importa planilhas `.xlsx` ou `.csv` e persiste operações em
 `investments.json`. Os relatórios consolidados em PDF são processados no navegador
